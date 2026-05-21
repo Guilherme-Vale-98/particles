@@ -1,15 +1,14 @@
 package com.gui.particles;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
-class ParticlesApplicationTests {
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ParticlesApplicationTests extends AbstractIntegrationTest {
 
 	@Test
 	void contextLoads() {
+		assertThat(mockMvc).isNotNull();
 	}
 
 }
