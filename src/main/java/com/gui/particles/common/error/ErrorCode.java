@@ -4,6 +4,7 @@ public enum ErrorCode {
     BAD_REQUEST("bad-request", "Bad request"),
     VALIDATION_FAILED("validation-failed", "Validation failed"),
     UNAUTHORIZED("unauthorized", "Unauthorized"),
+    PROFILE_SETUP_REQUIRED("profile-setup-required", "Profile setup required"),
     NOT_FOUND("not-found", "Resource not found"),
     FORBIDDEN("forbidden", "Forbidden"),
     CONFLICT("conflict", "Conflict"),

@@ -22,10 +22,14 @@ public class GitHubOpaqueTokenIntrospector implements OpaqueTokenIntrospector {
     private final String introspectionUri;
 
     public GitHubOpaqueTokenIntrospector(String clientId, String clientSecret) {
+        this(clientId, clientSecret, new RestTemplate());
+    }
+
+    public GitHubOpaqueTokenIntrospector(String clientId, String clientSecret, RestTemplate restTemplate) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.introspectionUri = "https://api.github.com/applications/" + clientId + "/token";
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -45,7 +49,7 @@ public class GitHubOpaqueTokenIntrospector implements OpaqueTokenIntrospector {
 
             Map<String, Object> response = restTemplate.postForObject(introspectionUri, request, Map.class);
 
-            if (response.isEmpty()) {
+            if (response == null || response.isEmpty()) {
                 throw new OAuth2IntrospectionException("Empty response from GitHub token introspection endpoint");
             }
 
@@ -54,12 +58,19 @@ public class GitHubOpaqueTokenIntrospector implements OpaqueTokenIntrospector {
             userHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
             HttpEntity<Void> userRequest = new HttpEntity<>(userHeaders);
 
+            Map<String, Object> user = restTemplate
+                    .exchange("https://api.github.com/user", HttpMethod.GET, userRequest, Map.class)
+                    .getBody();
+
+            if (user == null || user.get("id") == null) {
+                throw new OAuth2IntrospectionException("GitHub authenticated user id is missing");
+            }
 
             List<Map<String,Object>> emails = restTemplate
                     .exchange("https://api.github.com/user/emails", HttpMethod.GET, userRequest, List.class)
                     .getBody();
 
-            String email = emails.stream()
+            String email = emails == null ? null : emails.stream()
                     .filter(e -> Boolean.TRUE.equals(e.get("primary")))
                     .filter(e -> Boolean.TRUE.equals(e.get("verified")))
                     .map(e -> (String)e.get("email"))
@@ -68,6 +79,10 @@ public class GitHubOpaqueTokenIntrospector implements OpaqueTokenIntrospector {
 
             Collection<GrantedAuthority> authorities = new ArrayList<>();
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            response.put("id", user.get("id"));
+            response.put("login", user.get("login"));
+            response.put("name", user.get("name"));
+            response.put("avatar_url", user.get("avatar_url"));
             response.put("email", email);
             return new OAuth2IntrospectionAuthenticatedPrincipal(response, authorities);
         } catch (Exception ex) {
