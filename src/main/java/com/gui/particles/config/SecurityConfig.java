@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.authentication.ProviderManager;
@@ -49,6 +50,8 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/*/articles").permitAll()
                 .requestMatchers("/auth/admin").hasRole("ADMIN")
                 .requestMatchers("/auth/me", "/auth/user").authenticated()
                 .anyRequest().authenticated()
