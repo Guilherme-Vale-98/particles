@@ -1,7 +1,7 @@
 package com.gui.particles.friendship.api;
 
 import com.gui.particles.friendship.domain.Friendship;
-import com.gui.particles.users.domain.UserProfile;
+import com.gui.particles.users.application.UserProfileSummary;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,7 +12,7 @@ public record PendingFriendRequestResponse(
         Instant createdAt
 ) {
 
-    public static PendingFriendRequestResponse from(Friendship friendship, UserProfile requester) {
+    public static PendingFriendRequestResponse from(Friendship friendship, UserProfileSummary requester) {
         return new PendingFriendRequestResponse(
                 friendship.id(),
                 FriendProfileResponse.from(requester),

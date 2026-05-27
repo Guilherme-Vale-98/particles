@@ -10,8 +10,8 @@ import com.gui.particles.friendship.api.PendingFriendRequestResponse;
 import com.gui.particles.friendship.domain.Friendship;
 import com.gui.particles.friendship.domain.FriendshipRepository;
 import com.gui.particles.friendship.domain.FriendshipStatus;
-import com.gui.particles.users.domain.UserProfile;
-import com.gui.particles.users.domain.UserProfileRepository;
+import com.gui.particles.users.application.UserProfileReadService;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -47,7 +47,7 @@ class FriendshipServiceTests {
     private FriendshipRepository friendshipRepository;
 
     @Mock
-    private UserProfileRepository userProfileRepository;
+    private UserProfileReadService userProfileReadService;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -64,7 +64,7 @@ class FriendshipServiceTests {
         UUID receiverId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         UUID friendshipId = UUID.randomUUID();
         when(currentUserProvider.currentUserId()).thenReturn(requesterId);
-        when(userProfileRepository.existsById(receiverId)).thenReturn(true);
+        when(userProfileReadService.existsById(receiverId)).thenReturn(true);
         when(friendshipRepository.existsByUserLowIdAndUserHighIdAndStatusIn(eq(receiverId), eq(requesterId), anyCollection()))
                 .thenReturn(false);
         when(friendshipRepository.save(any(Friendship.class))).thenAnswer(invocation -> {
@@ -117,7 +117,7 @@ class FriendshipServiceTests {
         UUID requesterId = UUID.randomUUID();
         UUID receiverId = UUID.randomUUID();
         when(currentUserProvider.currentUserId()).thenReturn(requesterId);
-        when(userProfileRepository.existsById(receiverId)).thenReturn(false);
+        when(userProfileReadService.existsById(receiverId)).thenReturn(false);
 
         assertThatThrownBy(() -> friendshipService.sendFriendRequest(receiverId))
                 .isInstanceOfSatisfying(DomainException.class, exception -> {
@@ -133,7 +133,7 @@ class FriendshipServiceTests {
         UUID userLowId = Friendship.lowUserId(requesterId, receiverId);
         UUID userHighId = Friendship.highUserId(requesterId, receiverId);
         when(currentUserProvider.currentUserId()).thenReturn(requesterId);
-        when(userProfileRepository.existsById(receiverId)).thenReturn(true);
+        when(userProfileReadService.existsById(receiverId)).thenReturn(true);
         when(friendshipRepository.existsByUserLowIdAndUserHighIdAndStatusIn(eq(userLowId), eq(userHighId), anyCollection()))
                 .thenReturn(true);
 
@@ -292,17 +292,17 @@ class FriendshipServiceTests {
         UUID aliceId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         UUID bobId = UUID.fromString("00000000-0000-0000-0000-000000000002");
         UUID carolId = UUID.fromString("00000000-0000-0000-0000-000000000003");
-        UserProfile alice = UserProfile.create(aliceId, "alice", "Alice Example", null, null);
-        UserProfile bob = UserProfile.create(bobId, "bob", "Bob Example", null, "https://example.com/bob.png");
-        UserProfile carol = UserProfile.create(carolId, "carol", "Carol Example", null, null);
+        UserProfileSummary alice = new UserProfileSummary(aliceId, "alice", "Alice Example", null);
+        UserProfileSummary bob = new UserProfileSummary(bobId, "bob", "Bob Example", "https://example.com/bob.png");
+        UserProfileSummary carol = new UserProfileSummary(carolId, "carol", "Carol Example", null);
         Friendship aliceRequestedBob = acceptedFriendship(aliceId, bobId);
         setId(aliceRequestedBob, UUID.fromString("00000000-0000-0000-0000-000000000020"));
         Friendship carolRequestedAlice = acceptedFriendship(carolId, aliceId);
         setId(carolRequestedAlice, UUID.fromString("00000000-0000-0000-0000-000000000010"));
-        when(userProfileRepository.findByUsername("alice")).thenReturn(Optional.of(alice));
+        when(userProfileReadService.findSummaryByUsername("alice")).thenReturn(Optional.of(alice));
         when(friendshipRepository.findByRequesterIdOrReceiverIdAndStatus(aliceId, aliceId, FriendshipStatus.ACCEPTED))
                 .thenReturn(List.of(aliceRequestedBob, carolRequestedAlice));
-        when(userProfileRepository.findAllById(any())).thenReturn(List.of(bob, carol));
+        when(userProfileReadService.findSummariesByIds(any())).thenReturn(List.of(bob, carol));
 
         CursorPage<FriendProfileResponse> friends = friendshipService.getFriendsByUsername("alice", null, 20);
 
@@ -320,10 +320,9 @@ class FriendshipServiceTests {
         UUID bobId = UUID.fromString("00000000-0000-0000-0000-000000000002");
         UUID carolId = UUID.fromString("00000000-0000-0000-0000-000000000003");
         UUID danId = UUID.fromString("00000000-0000-0000-0000-000000000004");
-        UserProfile alice = UserProfile.create(aliceId, "alice", "Alice Example", null, null);
-        UserProfile bob = UserProfile.create(bobId, "bob", "Bob Example", null, null);
-        UserProfile carol = UserProfile.create(carolId, "carol", "Carol Example", null, null);
-        UserProfile dan = UserProfile.create(danId, "dan", "Dan Example", null, null);
+        UserProfileSummary alice = new UserProfileSummary(aliceId, "alice", "Alice Example", null);
+        UserProfileSummary bob = new UserProfileSummary(bobId, "bob", "Bob Example", null);
+        UserProfileSummary carol = new UserProfileSummary(carolId, "carol", "Carol Example", null);
         Friendship bobFriendship = acceptedFriendship(aliceId, bobId);
         setId(bobFriendship, UUID.fromString("00000000-0000-0000-0000-000000000030"));
         setCreatedAt(bobFriendship, Instant.parse("2026-05-23T10:00:00Z"));
@@ -333,10 +332,10 @@ class FriendshipServiceTests {
         Friendship danFriendship = acceptedFriendship(danId, aliceId);
         setId(danFriendship, UUID.fromString("00000000-0000-0000-0000-000000000010"));
         setCreatedAt(danFriendship, Instant.parse("2026-05-23T08:00:00Z"));
-        when(userProfileRepository.findByUsername("alice")).thenReturn(Optional.of(alice));
+        when(userProfileReadService.findSummaryByUsername("alice")).thenReturn(Optional.of(alice));
         when(friendshipRepository.findByRequesterIdOrReceiverIdAndStatus(aliceId, aliceId, FriendshipStatus.ACCEPTED))
                 .thenReturn(List.of(danFriendship, bobFriendship, carolFriendship));
-        when(userProfileRepository.findAllById(List.of(bobId, carolId))).thenReturn(List.of(bob, carol));
+        when(userProfileReadService.findSummariesByIds(List.of(bobId, carolId))).thenReturn(List.of(bob, carol));
         when(cursorCodec.encode(any())).thenReturn("next-cursor");
 
         CursorPage<FriendProfileResponse> friends = friendshipService.getFriendsByUsername("alice", null, 2);
@@ -349,7 +348,7 @@ class FriendshipServiceTests {
 
     @Test
     void rejectsFriendListForMissingUsername() {
-        when(userProfileRepository.findByUsername("missing")).thenReturn(Optional.empty());
+        when(userProfileReadService.findSummaryByUsername("missing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> friendshipService.getFriendsByUsername("missing", null, 20))
                 .isInstanceOfSatisfying(DomainException.class, exception -> {
@@ -363,13 +362,13 @@ class FriendshipServiceTests {
         UUID currentUserId = UUID.randomUUID();
         UUID requesterId = UUID.randomUUID();
         UUID friendshipId = UUID.randomUUID();
-        UserProfile requester = UserProfile.create(requesterId, "bob", "Bob Example", null, "https://example.com/bob.png");
+        UserProfileSummary requester = new UserProfileSummary(requesterId, "bob", "Bob Example", "https://example.com/bob.png");
         Friendship friendship = Friendship.request(requesterId, currentUserId);
         setId(friendship, friendshipId);
         when(currentUserProvider.currentUserId()).thenReturn(currentUserId);
         when(friendshipRepository.findByReceiverIdAndStatus(currentUserId, FriendshipStatus.PENDING))
                 .thenReturn(List.of(friendship));
-        when(userProfileRepository.findAllById(List.of(requesterId))).thenReturn(List.of(requester));
+        when(userProfileReadService.findSummariesByIds(List.of(requesterId))).thenReturn(List.of(requester));
 
         CursorPage<PendingFriendRequestResponse> pendingRequests = friendshipService.getPendingFriendRequests(null, 20);
 

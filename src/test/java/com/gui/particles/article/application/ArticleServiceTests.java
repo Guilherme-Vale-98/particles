@@ -15,7 +15,7 @@ import com.gui.particles.common.pagination.CursorCodec;
 import com.gui.particles.common.error.DomainException;
 import com.gui.particles.common.error.ErrorCode;
 import com.gui.particles.common.security.CurrentUserProvider;
-import com.gui.particles.users.domain.UserProfileRepository;
+import com.gui.particles.users.application.UserProfileReadService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,7 +54,7 @@ class ArticleServiceTests {
     private ArticleVersionRepository articleVersionRepository;
 
     @Mock
-    private UserProfileRepository userProfileRepository;
+    private UserProfileReadService userProfileReadService;
 
     @Mock
     private SlugGenerator slugGenerator;
@@ -78,7 +78,7 @@ class ArticleServiceTests {
                 articleRepository,
                 articleTagRepository,
                 articleVersionRepository,
-                userProfileRepository,
+                userProfileReadService,
                 slugGenerator,
                 readTimeCalculator,
                 eventPublisher,
@@ -384,6 +384,64 @@ class ArticleServiceTests {
         when(articleRepository.findBySlug("draft-slug-a1b2c3d4")).thenReturn(Optional.of(article));
 
         assertThatThrownBy(() -> articleService.archiveArticle("draft-slug-a1b2c3d4"))
+                .isInstanceOfSatisfying(DomainException.class, exception -> {
+                    assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.CONFLICT);
+                });
+    }
+
+    @Test
+    void restoresArchivedArticleForAuthorWithoutPublishingEvent() {
+        UUID authorId = UUID.randomUUID();
+        Article article = article(authorId, "archived-slug-a1b2c3d4", "Body");
+        article.publish();
+        article.archive();
+        when(currentUserProvider.currentUserId()).thenReturn(authorId);
+        when(articleRepository.findBySlug("archived-slug-a1b2c3d4")).thenReturn(Optional.of(article));
+        when(articleRepository.save(article)).thenReturn(article);
+        when(articleTagRepository.findByArticleId(article.id())).thenReturn(List.of());
+
+        ArticleResponse response = articleService.restoreArticle("archived-slug-a1b2c3d4");
+
+        assertThat(response.status()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(response.publishedAt()).isNotNull();
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void restoreRejectsNonAuthor() {
+        Article article = article(UUID.randomUUID(), "archived-slug-a1b2c3d4", "Body");
+        article.publish();
+        article.archive();
+        when(currentUserProvider.currentUserId()).thenReturn(UUID.randomUUID());
+        when(articleRepository.findBySlug("archived-slug-a1b2c3d4")).thenReturn(Optional.of(article));
+
+        assertThatThrownBy(() -> articleService.restoreArticle("archived-slug-a1b2c3d4"))
+                .isInstanceOfSatisfying(DomainException.class, exception -> {
+                    assertThat(exception.status()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+                });
+    }
+
+    @Test
+    void restoreRejectsMissingArticle() {
+        when(articleRepository.findBySlug("missing")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> articleService.restoreArticle("missing"))
+                .isInstanceOfSatisfying(DomainException.class, exception -> {
+                    assertThat(exception.status()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND);
+                });
+    }
+
+    @Test
+    void restoreRejectsNonArchivedArticle() {
+        UUID authorId = UUID.randomUUID();
+        Article article = article(authorId, "draft-slug-a1b2c3d4", "Body");
+        when(currentUserProvider.currentUserId()).thenReturn(authorId);
+        when(articleRepository.findBySlug("draft-slug-a1b2c3d4")).thenReturn(Optional.of(article));
+
+        assertThatThrownBy(() -> articleService.restoreArticle("draft-slug-a1b2c3d4"))
                 .isInstanceOfSatisfying(DomainException.class, exception -> {
                     assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(exception.errorCode()).isEqualTo(ErrorCode.CONFLICT);

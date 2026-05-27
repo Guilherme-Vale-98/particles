@@ -130,6 +130,14 @@ public class Article {
         this.updatedAt = Instant.now();
     }
 
+    public void restore() {
+        if (status != ArticleStatus.ARCHIVED) {
+            throw new IllegalStateException("Only archived articles can be restored");
+        }
+        this.status = ArticleStatus.PUBLISHED;
+        this.updatedAt = Instant.now();
+    }
+
     public boolean isPublished() {
         return status == ArticleStatus.PUBLISHED;
     }

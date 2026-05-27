@@ -78,4 +78,9 @@ public class ArticleController {
     public ArticleResponse archiveArticle(@PathVariable String slug) {
         return articleService.archiveArticle(slug);
     }
+
+    @PostMapping("/articles/{slug}/restore")
+    public ArticleResponse restoreArticle(@PathVariable String slug) {
+        return articleService.restoreArticle(slug);
+    }
 }

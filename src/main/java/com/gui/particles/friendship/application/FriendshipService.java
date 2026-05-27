@@ -11,8 +11,8 @@ import com.gui.particles.friendship.api.PendingFriendRequestResponse;
 import com.gui.particles.friendship.domain.Friendship;
 import com.gui.particles.friendship.domain.FriendshipRepository;
 import com.gui.particles.friendship.domain.FriendshipStatus;
-import com.gui.particles.users.domain.UserProfile;
-import com.gui.particles.users.domain.UserProfileRepository;
+import com.gui.particles.users.application.UserProfileReadService;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -36,20 +36,20 @@ public class FriendshipService {
 
     private final CurrentUserProvider currentUserProvider;
     private final FriendshipRepository friendshipRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final UserProfileReadService userProfileReadService;
     private final ApplicationEventPublisher eventPublisher;
     private final CursorCodec cursorCodec;
 
     public FriendshipService(
             CurrentUserProvider currentUserProvider,
             FriendshipRepository friendshipRepository,
-            UserProfileRepository userProfileRepository,
+            UserProfileReadService userProfileReadService,
             ApplicationEventPublisher eventPublisher,
             CursorCodec cursorCodec
     ) {
         this.currentUserProvider = currentUserProvider;
         this.friendshipRepository = friendshipRepository;
-        this.userProfileRepository = userProfileRepository;
+        this.userProfileReadService = userProfileReadService;
         this.eventPublisher = eventPublisher;
         this.cursorCodec = cursorCodec;
     }
@@ -134,7 +134,7 @@ public class FriendshipService {
 
     @Transactional(readOnly = true)
     public CursorPage<FriendProfileResponse> getFriendsByUsername(String username, String cursor, Integer limit) {
-        UserProfile profile = userProfileRepository.findByUsername(username)
+        UserProfileSummary profile = userProfileReadService.findSummaryByUsername(username)
                 .orElseThrow(() -> new DomainException(
                         HttpStatus.NOT_FOUND,
                         ErrorCode.NOT_FOUND,
@@ -153,7 +153,7 @@ public class FriendshipService {
                 .map(friendship -> friendUserId(friendship, profile.id()))
                 .distinct()
                 .toList();
-        Map<UUID, UserProfile> profilesById = profilesById(friendIds);
+        Map<UUID, UserProfileSummary> profilesById = profilesById(friendIds);
 
         List<FriendProfileResponse> items = friendIds.stream()
                 .map(profilesById::get)
@@ -177,7 +177,7 @@ public class FriendshipService {
                 .map(Friendship::requesterId)
                 .distinct()
                 .toList();
-        Map<UUID, UserProfile> profilesById = profilesById(requesterIds);
+        Map<UUID, UserProfileSummary> profilesById = profilesById(requesterIds);
 
         List<PendingFriendRequestResponse> items = includedPage.stream()
                 .map(friendship -> pendingFriendRequestResponse(friendship, profilesById))
@@ -236,9 +236,9 @@ public class FriendshipService {
         return friendship.requesterId().equals(profileId) ? friendship.receiverId() : friendship.requesterId();
     }
 
-    private Map<UUID, UserProfile> profilesById(List<UUID> profileIds) {
-        return userProfileRepository.findAllById(profileIds).stream()
-                .collect(Collectors.toMap(UserProfile::id, Function.identity()));
+    private Map<UUID, UserProfileSummary> profilesById(List<UUID> profileIds) {
+        return userProfileReadService.findSummariesByIds(profileIds).stream()
+                .collect(Collectors.toMap(UserProfileSummary::id, Function.identity()));
     }
 
     private List<Friendship> page(List<Friendship> friendships, CursorRequest cursorRequest) {
@@ -283,14 +283,14 @@ public class FriendshipService {
 
     private PendingFriendRequestResponse pendingFriendRequestResponse(
             Friendship friendship,
-            Map<UUID, UserProfile> profilesById
+            Map<UUID, UserProfileSummary> profilesById
     ) {
-        UserProfile requester = profilesById.get(friendship.requesterId());
+        UserProfileSummary requester = profilesById.get(friendship.requesterId());
         return requester == null ? null : PendingFriendRequestResponse.from(friendship, requester);
     }
 
     private void rejectMissingReceiver(UUID receiverId) {
-        if (!userProfileRepository.existsById(receiverId)) {
+        if (!userProfileReadService.existsById(receiverId)) {
             throw new DomainException(
                     HttpStatus.NOT_FOUND,
                     ErrorCode.NOT_FOUND,

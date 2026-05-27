@@ -1,6 +1,6 @@
 package com.gui.particles.friendship.api;
 
-import com.gui.particles.users.domain.UserProfile;
+import com.gui.particles.users.application.UserProfileSummary;
 
 import java.util.UUID;
 
@@ -11,7 +11,7 @@ public record FriendProfileResponse(
         String avatarUrl
 ) {
 
-    public static FriendProfileResponse from(UserProfile profile) {
+    public static FriendProfileResponse from(UserProfileSummary profile) {
         return new FriendProfileResponse(
                 profile.id(),
                 profile.username(),

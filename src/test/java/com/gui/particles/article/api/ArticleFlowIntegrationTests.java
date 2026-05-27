@@ -135,6 +135,18 @@ class ArticleFlowIntegrationTests extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/articles/{slug}", slug))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("not-found"));
+
+        mockMvc.perform(post("/api/v1/articles/{slug}/restore", slug)
+                        .with(authenticatedAs(author)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value(slug))
+                .andExpect(jsonPath("$.status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.publishedAt").exists());
+
+        mockMvc.perform(get("/api/v1/articles/{slug}", slug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value(slug))
+                .andExpect(jsonPath("$.status").value("PUBLISHED"));
     }
 
     @Test

@@ -19,7 +19,7 @@ import com.gui.particles.common.pagination.CursorCodec;
 import com.gui.particles.common.pagination.CursorPage;
 import com.gui.particles.common.pagination.CursorRequest;
 import com.gui.particles.common.security.CurrentUserProvider;
-import com.gui.particles.users.domain.UserProfileRepository;
+import com.gui.particles.users.application.UserProfileReadService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -45,7 +45,7 @@ public class ArticleService {
     private final ArticleRepository articleRepository;
     private final ArticleTagRepository articleTagRepository;
     private final ArticleVersionRepository articleVersionRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final UserProfileReadService userProfileReadService;
     private final SlugGenerator slugGenerator;
     private final ReadTimeCalculator readTimeCalculator;
     private final ApplicationEventPublisher eventPublisher;
@@ -58,7 +58,7 @@ public class ArticleService {
             ArticleRepository articleRepository,
             ArticleTagRepository articleTagRepository,
             ArticleVersionRepository articleVersionRepository,
-            UserProfileRepository userProfileRepository,
+            UserProfileReadService userProfileReadService,
             SlugGenerator slugGenerator,
             ReadTimeCalculator readTimeCalculator,
             ApplicationEventPublisher eventPublisher,
@@ -70,7 +70,7 @@ public class ArticleService {
         this.articleRepository = articleRepository;
         this.articleTagRepository = articleTagRepository;
         this.articleVersionRepository = articleVersionRepository;
-        this.userProfileRepository = userProfileRepository;
+        this.userProfileReadService = userProfileReadService;
         this.slugGenerator = slugGenerator;
         this.readTimeCalculator = readTimeCalculator;
         this.eventPublisher = eventPublisher;
@@ -163,6 +163,21 @@ public class ArticleService {
         return response(articleRepository.save(article));
     }
 
+    @Transactional
+    public ArticleResponse restoreArticle(String slug) {
+        UUID currentUserId = currentUserProvider.currentUserId();
+        Article article = findBySlug(slug);
+        requireAuthor(article, currentUserId);
+
+        try {
+            article.restore();
+        } catch (IllegalStateException exception) {
+            throw conflict(exception.getMessage());
+        }
+
+        return response(articleRepository.save(article));
+    }
+
     @Transactional(readOnly = true)
     public ArticleResponse getPublishedArticleBySlug(String slug) {
         Article article = findBySlug(slug);
@@ -185,7 +200,7 @@ public class ArticleService {
             String cursor,
             Integer limit
     ) {
-        UUID authorId = userProfileRepository.findByUsername(username)
+        UUID authorId = userProfileReadService.findSummaryByUsername(username)
                 .orElseThrow(() -> new DomainException(
                         HttpStatus.NOT_FOUND,
                         ErrorCode.NOT_FOUND,

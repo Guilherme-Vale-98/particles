@@ -125,6 +125,34 @@ class ArticleTests {
     }
 
     @Test
+    void restoresArchivedArticleKeepingOriginalPublishedAt() {
+        Article article = draftArticle();
+        article.publish();
+        var publishedAt = article.publishedAt();
+        article.archive();
+
+        article.restore();
+
+        assertThat(article.status()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(article.isPublished()).isTrue();
+        assertThat(article.publishedAt()).isEqualTo(publishedAt);
+    }
+
+    @Test
+    void onlyArchivedArticleCanBeRestored() {
+        Article draft = draftArticle();
+        Article published = draftArticle();
+        published.publish();
+
+        assertThatThrownBy(draft::restore)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Only archived articles can be restored");
+        assertThatThrownBy(published::restore)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Only archived articles can be restored");
+    }
+
+    @Test
     void definesArticleStatuses() {
         assertThat(ArticleStatus.values())
                 .containsExactly(ArticleStatus.DRAFT, ArticleStatus.PUBLISHED, ArticleStatus.ARCHIVED);
