@@ -10,6 +10,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +67,7 @@ class ArticleMapperTests {
         assertThat(response.slug()).isEqualTo("card-title-a1b2c3d4");
         assertThat(response.summary()).isEqualTo("Card summary");
         assertThat(response.tags()).isEmpty();
+        assertThat(response.reactionCounts()).isEmpty();
     }
 
     @Test
@@ -77,7 +79,8 @@ class ArticleMapperTests {
 
         ArticleCardResponse response = mapper.toCardResponse(
                 articleCardProjection(articleId, authorId, publishedAt, updatedAt),
-                List.of("spring", "redis")
+                List.of("spring", "redis"),
+                Map.of("LIKE", 2L, "CLAP", 1L)
         );
 
         assertThat(response.id()).isEqualTo(articleId);
@@ -89,6 +92,8 @@ class ArticleMapperTests {
         assertThat(response.readTimeMinutes()).isEqualTo(5);
         assertThat(response.viewCount()).isEqualTo(42);
         assertThat(response.tags()).containsExactly("spring", "redis");
+        assertThat(response.reactionCounts()).containsEntry("LIKE", 2L);
+        assertThat(response.reactionCounts()).containsEntry("CLAP", 1L);
         assertThat(response.publishedAt()).isEqualTo(publishedAt);
         assertThat(response.updatedAt()).isEqualTo(updatedAt);
     }

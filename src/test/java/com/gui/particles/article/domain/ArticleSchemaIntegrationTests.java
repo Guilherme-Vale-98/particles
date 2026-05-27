@@ -17,6 +17,7 @@ class ArticleSchemaIntegrationTests extends AbstractIntegrationTest {
         assertThat(tableExists("articles")).isTrue();
         assertThat(tableExists("article_tags")).isTrue();
         assertThat(tableExists("article_versions")).isTrue();
+        assertThat(tableExists("article_reaction_counts")).isTrue();
     }
 
     @Test
@@ -48,6 +49,15 @@ class ArticleSchemaIntegrationTests extends AbstractIntegrationTest {
         assertThat(columnExists("article_versions", "article_id")).isTrue();
         assertThat(columnExists("article_versions", "body")).isTrue();
         assertThat(columnExists("article_versions", "edited_at")).isTrue();
+    }
+
+    @Test
+    void createsArticleReactionCountColumnsAndPrimaryKey() {
+        assertThat(columnExists("article_reaction_counts", "article_id")).isTrue();
+        assertThat(columnExists("article_reaction_counts", "reaction_type")).isTrue();
+        assertThat(columnExists("article_reaction_counts", "count")).isTrue();
+
+        assertThat(indexExists("article_reaction_counts_pkey")).isTrue();
     }
 
     @Test

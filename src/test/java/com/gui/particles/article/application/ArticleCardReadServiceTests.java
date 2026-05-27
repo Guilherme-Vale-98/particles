@@ -2,6 +2,8 @@ package com.gui.particles.article.application;
 
 import com.gui.particles.article.api.ArticleCardResponse;
 import com.gui.particles.article.api.ArticleMapper;
+import com.gui.particles.article.domain.ArticleReactionCount;
+import com.gui.particles.article.domain.ArticleReactionCountRepository;
 import com.gui.particles.article.domain.ArticleCardProjection;
 import com.gui.particles.article.domain.ArticleRepository;
 import com.gui.particles.article.domain.ArticleStatus;
@@ -13,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,10 +31,12 @@ class ArticleCardReadServiceTests {
     void returnsPublishedCardsWithTagsForRequestedIds() {
         ArticleRepository articleRepository = mock(ArticleRepository.class);
         ArticleTagRepository articleTagRepository = mock(ArticleTagRepository.class);
+        ArticleReactionCountRepository articleReactionCountRepository = mock(ArticleReactionCountRepository.class);
         ArticleMapper articleMapper = mock(ArticleMapper.class);
         ArticleCardReadService articleCardReadService = new ArticleCardReadServiceImpl(
                 articleRepository,
                 articleTagRepository,
+                articleReactionCountRepository,
                 articleMapper
         );
         UUID firstArticleId = UUID.randomUUID();
@@ -50,8 +55,23 @@ class ArticleCardReadServiceTests {
                         ArticleTag.create(secondArticleId, "feed"),
                         ArticleTag.create(firstArticleId, "redis")
                 ));
-        when(articleMapper.toCardResponse(firstProjection, List.of("spring", "redis"))).thenReturn(firstResponse);
-        when(articleMapper.toCardResponse(secondProjection, List.of("feed"))).thenReturn(secondResponse);
+        when(articleReactionCountRepository.findByArticleIdIn(List.of(firstArticleId, secondArticleId)))
+                .thenReturn(List.of(
+                        reactionCount(firstArticleId, "LIKE", 2),
+                        reactionCount(firstArticleId, "CLAP", 1),
+                        reactionCount(firstArticleId, "INSIGHTFUL", 0),
+                        reactionCount(secondArticleId, "INSIGHTFUL", 3)
+                ));
+        when(articleMapper.toCardResponse(
+                firstProjection,
+                List.of("spring", "redis"),
+                Map.of("LIKE", 2L, "CLAP", 1L)
+        )).thenReturn(firstResponse);
+        when(articleMapper.toCardResponse(
+                secondProjection,
+                List.of("feed"),
+                Map.of("INSIGHTFUL", 3L)
+        )).thenReturn(secondResponse);
 
         List<ArticleCardResponse> cards = articleCardReadService.publishedCardsByIds(
                 List.of(firstArticleId, secondArticleId)
@@ -62,23 +82,26 @@ class ArticleCardReadServiceTests {
                 List.of(firstArticleId, secondArticleId),
                 ArticleStatus.PUBLISHED
         );
+        verify(articleReactionCountRepository).findByArticleIdIn(List.of(firstArticleId, secondArticleId));
     }
 
     @Test
     void returnsEmptyListWithoutRepositoryWorkForEmptyInput() {
         ArticleRepository articleRepository = mock(ArticleRepository.class);
         ArticleTagRepository articleTagRepository = mock(ArticleTagRepository.class);
+        ArticleReactionCountRepository articleReactionCountRepository = mock(ArticleReactionCountRepository.class);
         ArticleMapper articleMapper = mock(ArticleMapper.class);
         ArticleCardReadService articleCardReadService = new ArticleCardReadServiceImpl(
                 articleRepository,
                 articleTagRepository,
+                articleReactionCountRepository,
                 articleMapper
         );
 
         List<ArticleCardResponse> cards = articleCardReadService.publishedCardsByIds(List.of());
 
         assertThat(cards).isEmpty();
-        verifyNoInteractions(articleRepository, articleTagRepository, articleMapper);
+        verifyNoInteractions(articleRepository, articleTagRepository, articleReactionCountRepository, articleMapper);
     }
 
     private ArticleCardResponse response(UUID articleId, List<String> tags) {
@@ -92,9 +115,18 @@ class ArticleCardReadServiceTests {
                 3,
                 10,
                 tags,
+                Map.of(),
                 Instant.parse("2026-05-24T12:00:00Z"),
                 Instant.parse("2026-05-24T12:30:00Z")
         );
+    }
+
+    private ArticleReactionCount reactionCount(UUID articleId, String reactionType, long count) {
+        ArticleReactionCount reactionCount = ArticleReactionCount.create(articleId, reactionType);
+        for (long index = 0; index < count; index++) {
+            reactionCount.increment();
+        }
+        return reactionCount;
     }
 
     private ArticleCardProjection projection(UUID articleId) {

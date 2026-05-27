@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.Mockito.verify;
@@ -48,6 +49,7 @@ class FeedControllerTests {
                 4,
                 12,
                 List.of("spring", "feed"),
+                Map.of("LIKE", 2L),
                 Instant.parse("2026-05-24T12:00:00Z"),
                 Instant.parse("2026-05-24T12:30:00Z")
         );

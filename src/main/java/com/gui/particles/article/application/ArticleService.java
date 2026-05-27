@@ -7,6 +7,8 @@ import com.gui.particles.article.api.CreateArticleRequest;
 import com.gui.particles.article.api.UpdateArticleRequest;
 import com.gui.particles.article.domain.Article;
 import com.gui.particles.article.domain.ArticleCardProjection;
+import com.gui.particles.article.domain.ArticleReactionCount;
+import com.gui.particles.article.domain.ArticleReactionCountRepository;
 import com.gui.particles.article.domain.ArticleRepository;
 import com.gui.particles.article.domain.ArticleStatus;
 import com.gui.particles.article.domain.ArticleTag;
@@ -44,6 +46,7 @@ public class ArticleService {
     private final CurrentUserProvider currentUserProvider;
     private final ArticleRepository articleRepository;
     private final ArticleTagRepository articleTagRepository;
+    private final ArticleReactionCountRepository articleReactionCountRepository;
     private final ArticleVersionRepository articleVersionRepository;
     private final UserProfileReadService userProfileReadService;
     private final SlugGenerator slugGenerator;
@@ -57,6 +60,7 @@ public class ArticleService {
             CurrentUserProvider currentUserProvider,
             ArticleRepository articleRepository,
             ArticleTagRepository articleTagRepository,
+            ArticleReactionCountRepository articleReactionCountRepository,
             ArticleVersionRepository articleVersionRepository,
             UserProfileReadService userProfileReadService,
             SlugGenerator slugGenerator,
@@ -69,6 +73,7 @@ public class ArticleService {
         this.currentUserProvider = currentUserProvider;
         this.articleRepository = articleRepository;
         this.articleTagRepository = articleTagRepository;
+        this.articleReactionCountRepository = articleReactionCountRepository;
         this.articleVersionRepository = articleVersionRepository;
         this.userProfileReadService = userProfileReadService;
         this.slugGenerator = slugGenerator;
@@ -320,10 +325,12 @@ public class ArticleService {
                 .toList();
         List<ArticleCardProjection> includedPage = page.subList(0, Math.min(page.size(), cursorRequest.limit()));
         Map<UUID, List<String>> tagsByArticleId = tagsByArticleId(includedPage);
+        Map<UUID, Map<String, Long>> reactionCountsByArticleId = reactionCountsByArticleId(includedPage);
         List<ArticleCardResponse> items = includedPage.stream()
                 .map(article -> articleMapper.toCardResponse(
                         article,
-                        tagsByArticleId.getOrDefault(article.getId(), List.of())
+                        tagsByArticleId.getOrDefault(article.getId(), List.of()),
+                        reactionCountsByArticleId.getOrDefault(article.getId(), Map.of())
                 ))
                 .toList();
 
@@ -366,6 +373,25 @@ public class ArticleService {
                 .collect(Collectors.groupingBy(
                         ArticleTag::articleId,
                         Collectors.mapping(ArticleTag::tag, Collectors.toList())
+                ));
+    }
+
+    private Map<UUID, Map<String, Long>> reactionCountsByArticleId(List<ArticleCardProjection> cards) {
+        List<UUID> articleIds = cards.stream()
+                .map(ArticleCardProjection::getId)
+                .toList();
+        if (articleIds.isEmpty()) {
+            return Map.of();
+        }
+        return articleReactionCountRepository.findByArticleIdIn(articleIds).stream()
+                .filter(reactionCount -> reactionCount.count() > 0)
+                .collect(Collectors.groupingBy(
+                        ArticleReactionCount::articleId,
+                        Collectors.toMap(
+                                ArticleReactionCount::reactionType,
+                                ArticleReactionCount::count,
+                                Long::sum
+                        )
                 ));
     }
 

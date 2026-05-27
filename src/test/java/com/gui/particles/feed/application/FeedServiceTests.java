@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -177,6 +178,7 @@ class FeedServiceTests {
                 3,
                 10,
                 List.of("feed"),
+                Map.of(),
                 Instant.parse("2026-05-24T12:00:00Z"),
                 Instant.parse("2026-05-24T12:30:00Z")
         );

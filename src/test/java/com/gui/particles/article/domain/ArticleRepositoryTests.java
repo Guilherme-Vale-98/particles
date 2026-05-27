@@ -160,6 +160,30 @@ class ArticleRepositoryTests {
     }
 
     @Test
+    void articleReactionCountRepositoryExtendsJpaRepositoryForArticleReactionCountEntities() {
+        assertThat(JpaRepository.class).isAssignableFrom(ArticleReactionCountRepository.class);
+
+        ParameterizedType repositoryType =
+                (ParameterizedType) ArticleReactionCountRepository.class.getGenericInterfaces()[0];
+
+        assertThat(repositoryType.getActualTypeArguments())
+                .containsExactly(
+                        ArticleReactionCount.class,
+                        ArticleReactionCount.ArticleReactionCountId.class
+                );
+    }
+
+    @Test
+    void articleReactionCountRepositoryCanLoadCountsForMultipleArticles() throws NoSuchMethodException {
+        Method method = ArticleReactionCountRepository.class.getMethod("findByArticleIdIn", Collection.class);
+        ParameterizedType returnType = (ParameterizedType) method.getGenericReturnType();
+
+        assertThat(returnType.getRawType()).isEqualTo(List.class);
+        assertThat(returnType.getActualTypeArguments())
+                .containsExactly(ArticleReactionCount.class);
+    }
+
+    @Test
     void articleVersionRepositoryExtendsJpaRepositoryForArticleVersionEntities() {
         assertThat(JpaRepository.class).isAssignableFrom(ArticleVersionRepository.class);
 

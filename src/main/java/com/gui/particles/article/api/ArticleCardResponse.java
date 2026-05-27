@@ -4,6 +4,7 @@ import com.gui.particles.article.domain.ArticleStatus;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record ArticleCardResponse(
@@ -16,6 +17,7 @@ public record ArticleCardResponse(
         int readTimeMinutes,
         long viewCount,
         List<String> tags,
+        Map<String, Long> reactionCounts,
         Instant publishedAt,
         Instant updatedAt
 ) {

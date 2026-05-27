@@ -5,6 +5,7 @@ import com.gui.particles.article.api.ArticleResponse;
 import com.gui.particles.article.api.CreateArticleRequest;
 import com.gui.particles.article.api.UpdateArticleRequest;
 import com.gui.particles.article.domain.Article;
+import com.gui.particles.article.domain.ArticleReactionCountRepository;
 import com.gui.particles.article.domain.ArticleRepository;
 import com.gui.particles.article.domain.ArticleStatus;
 import com.gui.particles.article.domain.ArticleTag;
@@ -51,6 +52,9 @@ class ArticleServiceTests {
     private ArticleTagRepository articleTagRepository;
 
     @Mock
+    private ArticleReactionCountRepository articleReactionCountRepository;
+
+    @Mock
     private ArticleVersionRepository articleVersionRepository;
 
     @Mock
@@ -77,6 +81,7 @@ class ArticleServiceTests {
                 currentUserProvider,
                 articleRepository,
                 articleTagRepository,
+                articleReactionCountRepository,
                 articleVersionRepository,
                 userProfileReadService,
                 slugGenerator,

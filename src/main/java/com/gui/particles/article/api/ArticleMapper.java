@@ -11,6 +11,7 @@ import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper(
         componentModel = MappingConstants.ComponentModel.SPRING,
@@ -43,6 +44,7 @@ public interface ArticleMapper {
     @Mapping(target = "readTimeMinutes", expression = "java(article.readTimeMinutes())")
     @Mapping(target = "viewCount", expression = "java(article.viewCount())")
     @Mapping(target = "tags", source = "tags", qualifiedByName = "tagValues")
+    @Mapping(target = "reactionCounts", expression = "java(java.util.Map.of())")
     @Mapping(target = "publishedAt", expression = "java(article.publishedAt())")
     @Mapping(target = "updatedAt", expression = "java(article.updatedAt())")
     ArticleCardResponse toCardResponse(Article article, List<ArticleTag> tags);
@@ -56,9 +58,14 @@ public interface ArticleMapper {
     @Mapping(target = "readTimeMinutes", source = "article.readTimeMinutes")
     @Mapping(target = "viewCount", source = "article.viewCount")
     @Mapping(target = "tags", source = "tags")
+    @Mapping(target = "reactionCounts", source = "reactionCounts")
     @Mapping(target = "publishedAt", source = "article.publishedAt")
     @Mapping(target = "updatedAt", source = "article.updatedAt")
-    ArticleCardResponse toCardResponse(ArticleCardProjection article, List<String> tags);
+    ArticleCardResponse toCardResponse(
+            ArticleCardProjection article,
+            List<String> tags,
+            Map<String, Long> reactionCounts
+    );
 
     @Mapping(target = "id", expression = "java(articleVersion.id())")
     @Mapping(target = "articleId", expression = "java(articleVersion.articleId())")
