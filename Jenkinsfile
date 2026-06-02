@@ -63,7 +63,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 script {
-                    runMaven('"-Dtest=!*IntegrationTests,!*SchemaIntegrationTests,!*FlowIntegrationTests" test')
+                    runMaven('"-Dtest=!*IntegrationTests,!*SchemaIntegrationTests,!*FlowIntegrationTests,!ParticlesApplicationTests,!UserRepositoryTests" test')
                 }
             }
         }
@@ -80,7 +80,7 @@ pipeline {
             steps {
                 script {
                     if (commandSucceeds('docker info')) {
-                        runMaven('"-Dtest=*IntegrationTests,*SchemaIntegrationTests,*FlowIntegrationTests" test')
+                        runMaven('"-Dtest=*IntegrationTests,*SchemaIntegrationTests,*FlowIntegrationTests,ParticlesApplicationTests,UserRepositoryTests" test')
                     } else {
                         echo 'Docker is not available on this Jenkins agent. Skipping Testcontainers integration tests.'
                     }

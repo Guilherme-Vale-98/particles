@@ -2,6 +2,9 @@ package com.gui.particles.config;
 
 
 import com.gui.particles.common.ratelimit.RateLimitingFilter;
+import com.gui.particles.common.ratelimit.RateLimitKeyResolver;
+import com.gui.particles.common.ratelimit.RateLimitProperties;
+import com.gui.particles.common.ratelimit.RateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -40,6 +43,16 @@ public class SecurityConfig {
 
     @Value("${customJwt.jwksUri}")
     private String customJwksUri;
+
+    @Bean
+    public RateLimitingFilter rateLimitingFilter(
+            RateLimitProperties properties,
+            RateLimitKeyResolver keyResolver,
+            RateLimiter rateLimiter
+    ) {
+        return new RateLimitingFilter(properties, keyResolver, rateLimiter);
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, RateLimitingFilter rateLimitingFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
