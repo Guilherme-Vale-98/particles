@@ -23,6 +23,7 @@ import com.gui.particles.common.pagination.CursorRequest;
 import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.users.application.UserProfileReadService;
 import com.gui.particles.users.application.UserProfileSummary;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,7 @@ public class ArticleService {
     private final ArticleViewCounter articleViewCounter;
     private final CursorCodec cursorCodec;
     private final ArticleMapper articleMapper;
+    private final MeterRegistry meterRegistry;
 
     public ArticleService(
             CurrentUserProvider currentUserProvider,
@@ -69,7 +71,8 @@ public class ArticleService {
             ApplicationEventPublisher eventPublisher,
             ArticleViewCounter articleViewCounter,
             CursorCodec cursorCodec,
-            ArticleMapper articleMapper
+            ArticleMapper articleMapper,
+            MeterRegistry meterRegistry
     ) {
         this.currentUserProvider = currentUserProvider;
         this.articleRepository = articleRepository;
@@ -83,6 +86,7 @@ public class ArticleService {
         this.articleViewCounter = articleViewCounter;
         this.cursorCodec = cursorCodec;
         this.articleMapper = articleMapper;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional
@@ -151,6 +155,7 @@ public class ArticleService {
                 published.slug(),
                 published.publishedAt()
         ));
+        meterRegistry.counter("particles.article.publish.count").increment();
         return response(published);
     }
 

@@ -8,6 +8,7 @@ import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.notification.domain.Notification;
 import com.gui.particles.notification.domain.NotificationRepository;
 import com.gui.particles.notification.domain.NotificationType;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,6 +41,7 @@ class NotificationServiceTests {
     private NotificationRepository notificationRepository;
 
     private final CursorCodec cursorCodec = new CursorCodec();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @Test
     void createsNotificationWhenRecipientAndActorAreDifferent() {
@@ -66,6 +68,11 @@ class NotificationServiceTests {
         assertThat(notification.get().referenceId()).isEqualTo(referenceId);
         assertThat(notification.get().secondaryReferenceId()).isEqualTo(secondaryReferenceId);
         verify(notificationRepository).save(notification.get());
+        assertThat(meterRegistry.counter(
+                "particles.notification.creation.count",
+                "type",
+                NotificationType.ARTICLE_COMMENT.name()
+        ).count()).isEqualTo(1);
     }
 
     @Test
@@ -83,6 +90,7 @@ class NotificationServiceTests {
 
         assertThat(notification).isEmpty();
         verify(notificationRepository, never()).save(any());
+        assertThat(meterRegistry.find("particles.notification.creation.count").counter()).isNull();
     }
 
     @Test
@@ -248,7 +256,7 @@ class NotificationServiceTests {
     }
 
     private NotificationService notificationService() {
-        return new NotificationService(currentUserProvider, notificationRepository, cursorCodec);
+        return new NotificationService(currentUserProvider, notificationRepository, cursorCodec, meterRegistry);
     }
 
     private Notification notification(

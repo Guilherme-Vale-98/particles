@@ -7,6 +7,10 @@ import com.gui.particles.common.pagination.CursorRequest;
 import com.gui.particles.friendship.application.FriendshipService;
 import com.gui.particles.friendship.domain.Friendship;
 import com.gui.particles.friendship.domain.FriendshipStatus;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +30,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Friendships", description = "Send, answer, list, and delete friendships.")
 public class FriendshipController {
 
     private final FriendshipService friendshipService;
@@ -35,6 +40,15 @@ public class FriendshipController {
     }
 
     @PostMapping("/friendship-requests")
+    @Operation(summary = "Send a friend request", description = "Creates a pending friend request from the current user to another user profile.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Friend request created"),
+            @ApiResponse(responseCode = "400", description = "Request validation failed or receiver is the current user"),
+            @ApiResponse(responseCode = "401", description = "Authentication is required"),
+            @ApiResponse(responseCode = "404", description = "Receiver profile not found"),
+            @ApiResponse(responseCode = "409", description = "An active relationship already exists"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public ResponseEntity<FriendshipResponse> sendFriendRequest(@Valid @RequestBody CreateFriendRequestRequest request) {
         Friendship friendship = friendshipService.sendFriendRequest(request.receiverId());
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -45,6 +59,13 @@ public class FriendshipController {
     }
 
     @GetMapping("/users/me/friend-requests")
+    @Operation(summary = "List pending friend requests", description = "Returns cursor-paginated pending friend requests received by the current user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Pending friend requests returned"),
+            @ApiResponse(responseCode = "400", description = "Only PENDING status is supported or cursor is invalid"),
+            @ApiResponse(responseCode = "401", description = "Authentication is required"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public CursorPage<PendingFriendRequestResponse> getPendingFriendRequests(
             @RequestParam(defaultValue = "PENDING") FriendshipStatus status,
             @RequestParam(required = false) String cursor,
@@ -61,6 +82,16 @@ public class FriendshipController {
     }
 
     @PatchMapping("/friendship-requests/{id}")
+    @Operation(summary = "Accept or reject a friend request", description = "Accepts or rejects a pending friend request. Only the receiver can answer it.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Friend request updated"),
+            @ApiResponse(responseCode = "400", description = "Request validation failed"),
+            @ApiResponse(responseCode = "401", description = "Authentication is required"),
+            @ApiResponse(responseCode = "403", description = "Current user is not the friend request receiver"),
+            @ApiResponse(responseCode = "404", description = "Friend request not found"),
+            @ApiResponse(responseCode = "409", description = "Friend request is not pending"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public FriendshipResponse updateFriendRequestStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateFriendRequestStatusRequest request
@@ -77,6 +108,13 @@ public class FriendshipController {
     }
 
     @GetMapping("/users/{username}/friends")
+    @Operation(summary = "List a user's friends", description = "Returns cursor-paginated public friend profile summaries for a user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Friend profiles returned"),
+            @ApiResponse(responseCode = "400", description = "Cursor or paging parameter is invalid"),
+            @ApiResponse(responseCode = "404", description = "User profile not found"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public CursorPage<FriendProfileResponse> getFriendsByUsername(
             @PathVariable String username,
             @RequestParam(required = false) String cursor,
@@ -86,6 +124,14 @@ public class FriendshipController {
     }
 
     @DeleteMapping("/users/me/friends/{friendId}")
+    @Operation(summary = "Delete an accepted friendship", description = "Deletes the accepted friendship between the current user and another user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Friendship deleted"),
+            @ApiResponse(responseCode = "401", description = "Authentication is required"),
+            @ApiResponse(responseCode = "404", description = "Accepted friendship not found"),
+            @ApiResponse(responseCode = "409", description = "Relationship is not an accepted friendship"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public ResponseEntity<Void> deleteFriendship(@PathVariable UUID friendId) {
         friendshipService.deleteFriendship(friendId);
         return ResponseEntity.noContent().build();

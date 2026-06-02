@@ -9,6 +9,7 @@ import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.notification.domain.Notification;
 import com.gui.particles.notification.domain.NotificationRepository;
 import com.gui.particles.notification.domain.NotificationType;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,15 +25,18 @@ public class NotificationService {
     private final CurrentUserProvider currentUserProvider;
     private final NotificationRepository notificationRepository;
     private final CursorCodec cursorCodec;
+    private final MeterRegistry meterRegistry;
 
     public NotificationService(
             CurrentUserProvider currentUserProvider,
             NotificationRepository notificationRepository,
-            CursorCodec cursorCodec
+            CursorCodec cursorCodec,
+            MeterRegistry meterRegistry
     ) {
         this.currentUserProvider = currentUserProvider;
         this.notificationRepository = notificationRepository;
         this.cursorCodec = cursorCodec;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional
@@ -54,7 +58,9 @@ public class NotificationService {
                 referenceId,
                 secondaryReferenceId
         );
-        return Optional.of(notificationRepository.save(notification));
+        Notification savedNotification = notificationRepository.save(notification);
+        meterRegistry.counter("particles.notification.creation.count", "type", type.name()).increment();
+        return Optional.of(savedNotification);
     }
 
     @Transactional(readOnly = true)

@@ -5,6 +5,7 @@ public enum ErrorCode {
     VALIDATION_FAILED("validation-failed", "Validation failed"),
     UNAUTHORIZED("unauthorized", "Unauthorized"),
     PROFILE_SETUP_REQUIRED("profile-setup-required", "Profile setup required"),
+    RATE_LIMIT_EXCEEDED("rate-limit-exceeded", "Rate limit exceeded"),
     NOT_FOUND("not-found", "Resource not found"),
     FORBIDDEN("forbidden", "Forbidden"),
     CONFLICT("conflict", "Conflict"),

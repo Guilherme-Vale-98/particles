@@ -7,6 +7,8 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 *.properties
+!.mvn/wrapper/maven-wrapper.properties
+
 ### STS ###
 .apt_generated
 .classpath

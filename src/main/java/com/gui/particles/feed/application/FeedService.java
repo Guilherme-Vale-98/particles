@@ -8,6 +8,8 @@ import com.gui.particles.common.pagination.CursorPage;
 import com.gui.particles.common.pagination.CursorRequest;
 import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.friendship.application.FriendshipReadService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ public class FeedService {
     private final PostgresFeedStore postgresFeedStore;
     private final FeedProperties feedProperties;
     private final CursorCodec cursorCodec;
+    private final MeterRegistry meterRegistry;
 
     public FeedService(
             CurrentUserProvider currentUserProvider,
@@ -40,7 +43,8 @@ public class FeedService {
             RedisFeedStore redisFeedStore,
             PostgresFeedStore postgresFeedStore,
             FeedProperties feedProperties,
-            CursorCodec cursorCodec
+            CursorCodec cursorCodec,
+            MeterRegistry meterRegistry
     ) {
         this.currentUserProvider = currentUserProvider;
         this.friendshipReadService = friendshipReadService;
@@ -50,20 +54,34 @@ public class FeedService {
         this.postgresFeedStore = postgresFeedStore;
         this.feedProperties = feedProperties;
         this.cursorCodec = cursorCodec;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void fanOutPublishedArticle(ArticlePublishedEvent event) {
         Objects.requireNonNull(event, "event must not be null");
 
-        List<UUID> recipientIds = friendshipReadService.acceptedFriendIds(event.authorId());
-        if (recipientIds.isEmpty()) {
-            return;
-        }
+        Timer.Sample sample = Timer.start(meterRegistry);
+        boolean redisFanout = false;
+        String recipientBucket = "none";
+        try {
+            List<UUID> recipientIds = friendshipReadService.acceptedFriendIds(event.authorId());
+            if (recipientIds.isEmpty()) {
+                return;
+            }
 
-        feedWriter.writeFeedItems(event.articleId(), event.authorId(), event.publishedAt(), recipientIds);
-        if (recipientIds.size() <= feedProperties.fanoutThreshold()) {
-            redisFeedStore.addArticleToFeeds(event.articleId(), event.publishedAt(), recipientIds);
+            redisFanout = recipientIds.size() <= feedProperties.fanoutThreshold();
+            recipientBucket = redisFanout ? "small" : "large";
+
+            feedWriter.writeFeedItems(event.articleId(), event.authorId(), event.publishedAt(), recipientIds);
+            if (redisFanout) {
+                redisFeedStore.addArticleToFeeds(event.articleId(), event.publishedAt(), recipientIds);
+            }
+        } finally {
+            sample.stop(Timer.builder("particles.feed.fanout.duration")
+                    .tag("redisFanout", Boolean.toString(redisFanout))
+                    .tag("recipientBucket", recipientBucket)
+                    .register(meterRegistry));
         }
     }
 
@@ -73,8 +91,11 @@ public class FeedService {
 
         List<FeedEntry> entries = redisFeedStore.readFeedEntries(currentUserId, cursorRequest);
         if (entries.isEmpty()) {
+            meterRegistry.counter("particles.feed.redis.reads", "result", "miss").increment();
             entries = postgresFeedStore.readFeedEntries(currentUserId, cursorRequest);
             redisFeedStore.rewarmFeed(currentUserId, entries);
+        } else {
+            meterRegistry.counter("particles.feed.redis.reads", "result", "hit").increment();
         }
 
         return feedPage(entries, cursorRequest);

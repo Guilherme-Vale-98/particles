@@ -1,0 +1,37 @@
+particles:
+  rate-limit:
+    enabled: true
+    capacity: 120
+    refill-tokens: 120
+    refill-period: 1m
+    redis-key-prefix: "particles:rate-limit:"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+      group:
+        liveness:
+          include: ping
+        readiness:
+          include: db,redis
+        database:
+          include: db
+        redis:
+          include: redis
+  tracing:
+    sampling:
+      probability: ${OTEL_TRACES_SAMPLER_ARG:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+otel:
+  resource:
+    attributes:
+      service.name: ${OTEL_SERVICE_NAME:particles}
+      service.version: ${OTEL_SERVICE_VERSION:0.0.1-SNAPSHOT}

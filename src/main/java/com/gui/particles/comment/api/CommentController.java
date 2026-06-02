@@ -5,6 +5,10 @@ import com.gui.particles.comment.application.CommentThread;
 import com.gui.particles.comment.domain.Comment;
 import com.gui.particles.common.pagination.CursorPage;
 import com.gui.particles.common.pagination.CursorRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,6 +27,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Comments", description = "Read article comment threads and manage the current user's comments.")
 public class CommentController {
 
     private final CommentService commentService;
@@ -32,6 +37,13 @@ public class CommentController {
     }
 
     @GetMapping("/articles/{slug}/comments")
+    @Operation(summary = "List article comment threads", description = "Returns cursor-paginated top-level comments with one level of replies for a published article.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comment threads returned"),
+            @ApiResponse(responseCode = "400", description = "Cursor or paging parameter is invalid"),
+            @ApiResponse(responseCode = "404", description = "Published article not found"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public CursorPage<CommentThreadResponse> getComments(
             @PathVariable String slug,
             @RequestParam(required = false) String cursor,
@@ -48,6 +60,15 @@ public class CommentController {
     }
 
     @PostMapping("/articles/{slug}/comments")
+    @Operation(summary = "Create a comment or reply", description = "Creates a top-level comment or one-level reply on a published article for the current user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Comment created"),
+            @ApiResponse(responseCode = "400", description = "Request validation failed"),
+            @ApiResponse(responseCode = "401", description = "Authentication is required"),
+            @ApiResponse(responseCode = "404", description = "Published article or parent comment not found"),
+            @ApiResponse(responseCode = "409", description = "Reply target is invalid or deleted"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public ResponseEntity<CommentResponse> createComment(
             @PathVariable String slug,
             @Valid @RequestBody CreateCommentRequest request
@@ -63,6 +84,16 @@ public class CommentController {
     }
 
     @PutMapping("/comments/{id}")
+    @Operation(summary = "Edit current user's comment", description = "Updates the body of a non-deleted comment owned by the current user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comment edited"),
+            @ApiResponse(responseCode = "400", description = "Request validation failed"),
+            @ApiResponse(responseCode = "401", description = "Authentication is required"),
+            @ApiResponse(responseCode = "403", description = "Current user is not the comment author"),
+            @ApiResponse(responseCode = "404", description = "Comment not found"),
+            @ApiResponse(responseCode = "409", description = "Deleted comments cannot be edited"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public CommentResponse editComment(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCommentRequest request
@@ -71,6 +102,14 @@ public class CommentController {
     }
 
     @DeleteMapping("/comments/{id}")
+    @Operation(summary = "Soft delete current user's comment", description = "Soft-deletes a comment owned by the current user while preserving thread structure and replies.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Comment deleted"),
+            @ApiResponse(responseCode = "401", description = "Authentication is required"),
+            @ApiResponse(responseCode = "403", description = "Current user is not the comment author"),
+            @ApiResponse(responseCode = "404", description = "Comment not found"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+    })
     public ResponseEntity<Void> deleteComment(@PathVariable UUID id) {
         commentService.deleteComment(id);
         return ResponseEntity.noContent().build();

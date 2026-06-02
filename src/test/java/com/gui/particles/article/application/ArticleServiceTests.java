@@ -18,6 +18,7 @@ import com.gui.particles.common.error.ErrorCode;
 import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.users.application.UserProfileReadService;
 import com.gui.particles.users.application.UserProfileSummary;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -74,9 +75,11 @@ class ArticleServiceTests {
     private ArticleViewCounter articleViewCounter;
 
     private ArticleService articleService;
+    private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
         ArticleMapper articleMapper = Mappers.getMapper(ArticleMapper.class);
         articleService = new ArticleService(
                 currentUserProvider,
@@ -90,7 +93,8 @@ class ArticleServiceTests {
                 eventPublisher,
                 articleViewCounter,
                 new CursorCodec(),
-                articleMapper
+                articleMapper,
+                meterRegistry
         );
     }
 
@@ -342,6 +346,7 @@ class ArticleServiceTests {
         assertThat(eventCaptor.getValue().authorId()).isEqualTo(authorId);
         assertThat(eventCaptor.getValue().slug()).isEqualTo("draft-slug-a1b2c3d4");
         assertThat(eventCaptor.getValue().publishedAt()).isEqualTo(response.publishedAt());
+        assertThat(meterRegistry.counter("particles.article.publish.count").count()).isEqualTo(1);
     }
 
     @Test

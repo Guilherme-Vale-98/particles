@@ -29,6 +29,8 @@
 	<properties>
 		<java.version>21</java.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
+		<bucket4j.version>8.1.0</bucket4j.version>
+		<logstash-logback-encoder.version>9.0</logstash-logback-encoder.version>
 		<springdoc-openapi.version>3.0.3</springdoc-openapi.version>
 		<spring-modulith.version>2.0.6</spring-modulith.version>
 	</properties>
@@ -77,6 +79,16 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>${springdoc-openapi.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>${bucket4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+			<version>${logstash-logback-encoder.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mapstruct</groupId>

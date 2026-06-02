@@ -1,6 +1,7 @@
 package com.gui.particles.config;
 
 
+import com.gui.particles.common.ratelimit.RateLimitingFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +21,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.OpaqueTokenAuthenticationProvider;
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +41,7 @@ public class SecurityConfig {
     @Value("${customJwt.jwksUri}")
     private String customJwksUri;
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, RateLimitingFilter rateLimitingFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.oauth2ResourceServer(
@@ -57,6 +59,8 @@ public class SecurityConfig {
                 .requestMatchers("/auth/me", "/auth/user").authenticated()
                 .anyRequest().authenticated()
         );
+
+        http.addFilterAfter(rateLimitingFilter, BearerTokenAuthenticationFilter.class);
 
         return http.build();
     }

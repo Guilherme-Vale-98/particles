@@ -10,6 +10,7 @@ import com.gui.particles.common.pagination.CursorPage;
 import com.gui.particles.common.pagination.CursorRequest;
 import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.friendship.application.FriendshipReadService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,6 +37,7 @@ class FeedServiceTests {
     private final RedisFeedStore redisFeedStore = mock(RedisFeedStore.class);
     private final PostgresFeedStore postgresFeedStore = mock(PostgresFeedStore.class);
     private final CursorCodec cursorCodec = new CursorCodec();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @Test
     void fanOutDoesNothingWhenAuthorHasNoAcceptedFriends() {
@@ -60,6 +62,13 @@ class FeedServiceTests {
 
         verify(feedWriter).writeFeedItems(event.articleId(), event.authorId(), event.publishedAt(), recipients);
         verify(redisFeedStore).addArticleToFeeds(event.articleId(), event.publishedAt(), recipients);
+        assertThat(meterRegistry.timer(
+                "particles.feed.fanout.duration",
+                "redisFanout",
+                "true",
+                "recipientBucket",
+                "small"
+        ).count()).isEqualTo(1);
     }
 
     @Test
@@ -73,6 +82,13 @@ class FeedServiceTests {
 
         verify(feedWriter).writeFeedItems(event.articleId(), event.authorId(), event.publishedAt(), recipients);
         verify(redisFeedStore, never()).addArticleToFeeds(event.articleId(), event.publishedAt(), recipients);
+        assertThat(meterRegistry.timer(
+                "particles.feed.fanout.duration",
+                "redisFanout",
+                "false",
+                "recipientBucket",
+                "large"
+        ).count()).isEqualTo(1);
     }
 
     @Test
@@ -98,6 +114,7 @@ class FeedServiceTests {
         assertThat(page.items()).containsExactly(firstCard, secondCard);
         assertThat(page.hasMore()).isFalse();
         assertThat(page.nextCursor()).isNull();
+        assertThat(meterRegistry.counter("particles.feed.redis.reads", "result", "hit").count()).isEqualTo(1);
         verify(postgresFeedStore, never()).readFeedEntries(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()
@@ -120,6 +137,7 @@ class FeedServiceTests {
         CursorPage<ArticleCardResponse> page = feedService.getCurrentUserFeed(null, 20);
 
         assertThat(page.items()).containsExactly(card);
+        assertThat(meterRegistry.counter("particles.feed.redis.reads", "result", "miss").count()).isEqualTo(1);
         verify(redisFeedStore).rewarmFeed(currentUserId, List.of(entry));
     }
 
@@ -155,7 +173,8 @@ class FeedServiceTests {
                 redisFeedStore,
                 postgresFeedStore,
                 feedProperties,
-                cursorCodec
+                cursorCodec,
+                meterRegistry
         );
     }
 
