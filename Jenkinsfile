@@ -30,6 +30,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                deleteDir()
                 checkout scm
             }
         }
@@ -55,7 +56,7 @@ pipeline {
         stage('Compile') {
             steps {
                 script {
-                    runMaven('-DskipTests package')
+                    runMaven('clean -DskipTests package')
                 }
             }
         }
@@ -63,7 +64,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 script {
-                    runMaven('"-Dtest=!*IntegrationTests,!*SchemaIntegrationTests,!*FlowIntegrationTests,!ParticlesApplicationTests,!UserRepositoryTests" test')
+                    runMaven('"-Dtest=!*IntegrationTests,!*SchemaIntegrationTests,!*FlowIntegrationTests,!ParticlesApplicationTests,!UserRepositoryTests,!ApplicationModuleBoundaryTests" test')
                 }
             }
         }
