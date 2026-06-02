@@ -21,6 +21,10 @@ pipeline {
         jdk 'jdk-21'
     }
 
+    environment {
+        PATH+POWERSHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0'
+    }
+
     options {
         disableConcurrentBuilds()
         skipDefaultCheckout(true)
