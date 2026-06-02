@@ -4,6 +4,7 @@ import com.gui.particles.article.domain.Article;
 import com.gui.particles.article.domain.ArticleCardProjection;
 import com.gui.particles.article.domain.ArticleTag;
 import com.gui.particles.article.domain.ArticleVersion;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
@@ -20,7 +21,7 @@ import java.util.Map;
 public interface ArticleMapper {
 
     @Mapping(target = "id", expression = "java(article.id())")
-    @Mapping(target = "authorId", expression = "java(article.authorId())")
+    @Mapping(target = "author", source = "author")
     @Mapping(target = "title", expression = "java(article.title())")
     @Mapping(target = "slug", expression = "java(article.slug())")
     @Mapping(target = "summary", expression = "java(article.summary())")
@@ -33,10 +34,10 @@ public interface ArticleMapper {
     @Mapping(target = "publishedAt", expression = "java(article.publishedAt())")
     @Mapping(target = "updatedAt", expression = "java(article.updatedAt())")
     @Mapping(target = "version", expression = "java(article.version())")
-    ArticleResponse toResponse(Article article, List<ArticleTag> tags);
+    ArticleResponse toResponse(Article article, UserProfileSummary author, List<ArticleTag> tags);
 
     @Mapping(target = "id", expression = "java(article.id())")
-    @Mapping(target = "authorId", expression = "java(article.authorId())")
+    @Mapping(target = "author", source = "author")
     @Mapping(target = "title", expression = "java(article.title())")
     @Mapping(target = "slug", expression = "java(article.slug())")
     @Mapping(target = "summary", expression = "java(article.summary())")
@@ -47,10 +48,10 @@ public interface ArticleMapper {
     @Mapping(target = "reactionCounts", expression = "java(java.util.Map.of())")
     @Mapping(target = "publishedAt", expression = "java(article.publishedAt())")
     @Mapping(target = "updatedAt", expression = "java(article.updatedAt())")
-    ArticleCardResponse toCardResponse(Article article, List<ArticleTag> tags);
+    ArticleCardResponse toCardResponse(Article article, UserProfileSummary author, List<ArticleTag> tags);
 
     @Mapping(target = "id", source = "article.id")
-    @Mapping(target = "authorId", source = "article.authorId")
+    @Mapping(target = "author", source = "author")
     @Mapping(target = "title", source = "article.title")
     @Mapping(target = "slug", source = "article.slug")
     @Mapping(target = "summary", source = "article.summary")
@@ -63,9 +64,22 @@ public interface ArticleMapper {
     @Mapping(target = "updatedAt", source = "article.updatedAt")
     ArticleCardResponse toCardResponse(
             ArticleCardProjection article,
+            UserProfileSummary author,
             List<String> tags,
             Map<String, Long> reactionCounts
     );
+
+    default ArticleAuthorResponse toAuthorResponse(UserProfileSummary author) {
+        if (author == null) {
+            return null;
+        }
+        return new ArticleAuthorResponse(
+                author.id(),
+                author.username(),
+                author.displayName(),
+                author.avatarUrl()
+        );
+    }
 
     @Mapping(target = "id", expression = "java(articleVersion.id())")
     @Mapping(target = "articleId", expression = "java(articleVersion.articleId())")

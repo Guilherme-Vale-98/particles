@@ -9,6 +9,8 @@ import com.gui.particles.article.domain.ArticleRepository;
 import com.gui.particles.article.domain.ArticleStatus;
 import com.gui.particles.article.domain.ArticleTag;
 import com.gui.particles.article.domain.ArticleTagRepository;
+import com.gui.particles.users.application.UserProfileReadService;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,17 +26,20 @@ class ArticleCardReadServiceImpl implements ArticleCardReadService {
     private final ArticleRepository articleRepository;
     private final ArticleTagRepository articleTagRepository;
     private final ArticleReactionCountRepository articleReactionCountRepository;
+    private final UserProfileReadService userProfileReadService;
     private final ArticleMapper articleMapper;
 
     ArticleCardReadServiceImpl(
             ArticleRepository articleRepository,
             ArticleTagRepository articleTagRepository,
             ArticleReactionCountRepository articleReactionCountRepository,
+            UserProfileReadService userProfileReadService,
             ArticleMapper articleMapper
     ) {
         this.articleRepository = articleRepository;
         this.articleTagRepository = articleTagRepository;
         this.articleReactionCountRepository = articleReactionCountRepository;
+        this.userProfileReadService = userProfileReadService;
         this.articleMapper = articleMapper;
     }
 
@@ -52,10 +57,12 @@ class ArticleCardReadServiceImpl implements ArticleCardReadService {
         );
         Map<UUID, List<String>> tagsByArticleId = tagsByArticleId(orderedArticleIds);
         Map<UUID, Map<String, Long>> reactionCountsByArticleId = reactionCountsByArticleId(orderedArticleIds);
+        Map<UUID, UserProfileSummary> authorsById = authorsById(cards);
 
         return cards.stream()
                 .map(card -> articleMapper.toCardResponse(
                         card,
+                        authorsById.get(card.getAuthorId()),
                         tagsByArticleId.getOrDefault(card.getId(), List.of()),
                         reactionCountsByArticleId.getOrDefault(card.getId(), Map.of())
                 ))
@@ -80,6 +87,26 @@ class ArticleCardReadServiceImpl implements ArticleCardReadService {
                                 ArticleReactionCount::count,
                                 Long::sum
                         )
+                ));
+    }
+
+    private Map<UUID, UserProfileSummary> authorsById(List<ArticleCardProjection> cards) {
+        List<UUID> authorIds = cards.stream()
+                .map(ArticleCardProjection::getAuthorId)
+                .toList();
+        if (authorIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<UserProfileSummary> summaries = userProfileReadService.findSummariesByIds(authorIds);
+        if (summaries == null || summaries.isEmpty()) {
+            return Map.of();
+        }
+        return summaries.stream()
+                .collect(Collectors.toMap(
+                        UserProfileSummary::id,
+                        author -> author,
+                        (existing, duplicate) -> existing
                 ));
     }
 }

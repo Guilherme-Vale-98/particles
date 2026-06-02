@@ -90,7 +90,9 @@ class FeedFlowIntegrationTests extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/feed")
                         .with(authenticatedAs(bob)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].authorId").value(alice.id().toString()))
+                .andExpect(jsonPath("$.items[0].authorId").doesNotExist())
+                .andExpect(jsonPath("$.items[0].author.id").value(alice.id().toString()))
+                .andExpect(jsonPath("$.items[0].author.username").value("alice"))
                 .andExpect(jsonPath("$.items[0].slug").value(slug))
                 .andExpect(jsonPath("$.items[0].title").value("Feed Events In Practice"))
                 .andExpect(jsonPath("$.items[0].summary").value("A feed integration test."))
@@ -117,7 +119,8 @@ class FeedFlowIntegrationTests extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(article.id().toString()))
                 .andExpect(jsonPath("$.items[0].slug").value(slug))
-                .andExpect(jsonPath("$.items[0].authorId").value(alice.id().toString()))
+                .andExpect(jsonPath("$.items[0].authorId").doesNotExist())
+                .andExpect(jsonPath("$.items[0].author.id").value(alice.id().toString()))
                 .andExpect(jsonPath("$.items[0].status").value("PUBLISHED"))
                 .andExpect(jsonPath("$.hasMore").value(false));
 

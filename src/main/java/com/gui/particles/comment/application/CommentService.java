@@ -63,7 +63,12 @@ public class CommentService {
                         ErrorCode.NOT_FOUND,
                         "Parent comment not found"
                 ));
-        Comment reply = commentRepository.save(parent.replyBy(currentUserId, body));
+        Comment reply;
+        try {
+            reply = commentRepository.save(parent.replyBy(currentUserId, body));
+        } catch (IllegalStateException exception) {
+            throw conflict(exception.getMessage());
+        }
         publishCommentedEvent(reply);
         return reply;
     }

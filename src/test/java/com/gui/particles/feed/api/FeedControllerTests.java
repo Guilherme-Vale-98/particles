@@ -1,6 +1,7 @@
 package com.gui.particles.feed.api;
 
 import com.gui.particles.article.api.ArticleCardResponse;
+import com.gui.particles.article.api.ArticleAuthorResponse;
 import com.gui.particles.article.domain.ArticleStatus;
 import com.gui.particles.common.error.GlobalExceptionHandler;
 import com.gui.particles.common.pagination.CursorPage;
@@ -41,7 +42,7 @@ class FeedControllerTests {
         UUID authorId = UUID.randomUUID();
         ArticleCardResponse article = new ArticleCardResponse(
                 articleId,
-                authorId,
+                new ArticleAuthorResponse(authorId, "alice", "Alice Example", "https://example.com/alice.png"),
                 "A feed article",
                 "a-feed-article-a1b2c3d4",
                 "A useful summary",
@@ -61,7 +62,11 @@ class FeedControllerTests {
                         .queryParam("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(articleId.toString()))
-                .andExpect(jsonPath("$.items[0].authorId").value(authorId.toString()))
+                .andExpect(jsonPath("$.items[0].authorId").doesNotExist())
+                .andExpect(jsonPath("$.items[0].author.id").value(authorId.toString()))
+                .andExpect(jsonPath("$.items[0].author.username").value("alice"))
+                .andExpect(jsonPath("$.items[0].author.displayName").value("Alice Example"))
+                .andExpect(jsonPath("$.items[0].author.avatarUrl").value("https://example.com/alice.png"))
                 .andExpect(jsonPath("$.items[0].title").value("A feed article"))
                 .andExpect(jsonPath("$.items[0].slug").value("a-feed-article-a1b2c3d4"))
                 .andExpect(jsonPath("$.items[0].summary").value("A useful summary"))

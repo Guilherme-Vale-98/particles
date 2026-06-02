@@ -1,6 +1,7 @@
 package com.gui.particles.feed.application;
 
 import com.gui.particles.article.api.ArticleCardResponse;
+import com.gui.particles.article.api.ArticleAuthorResponse;
 import com.gui.particles.article.application.ArticleCardReadService;
 import com.gui.particles.article.application.ArticlePublishedEvent;
 import com.gui.particles.article.domain.ArticleStatus;
@@ -170,7 +171,7 @@ class FeedServiceTests {
     private ArticleCardResponse card(UUID articleId) {
         return new ArticleCardResponse(
                 articleId,
-                UUID.randomUUID(),
+                new ArticleAuthorResponse(UUID.randomUUID(), "alice", "Alice Example", "https://example.com/alice.png"),
                 "Title",
                 "title-a1b2c3d4",
                 "Summary",

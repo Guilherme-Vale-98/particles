@@ -1,6 +1,7 @@
 package com.gui.particles.article.application;
 
 import com.gui.particles.article.api.ArticleCardResponse;
+import com.gui.particles.article.api.ArticleAuthorResponse;
 import com.gui.particles.article.api.ArticleMapper;
 import com.gui.particles.article.domain.ArticleReactionCount;
 import com.gui.particles.article.domain.ArticleReactionCountRepository;
@@ -9,6 +10,8 @@ import com.gui.particles.article.domain.ArticleRepository;
 import com.gui.particles.article.domain.ArticleStatus;
 import com.gui.particles.article.domain.ArticleTag;
 import com.gui.particles.article.domain.ArticleTagRepository;
+import com.gui.particles.users.application.UserProfileReadService;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,17 +35,21 @@ class ArticleCardReadServiceTests {
         ArticleRepository articleRepository = mock(ArticleRepository.class);
         ArticleTagRepository articleTagRepository = mock(ArticleTagRepository.class);
         ArticleReactionCountRepository articleReactionCountRepository = mock(ArticleReactionCountRepository.class);
+        UserProfileReadService userProfileReadService = mock(UserProfileReadService.class);
         ArticleMapper articleMapper = mock(ArticleMapper.class);
         ArticleCardReadService articleCardReadService = new ArticleCardReadServiceImpl(
                 articleRepository,
                 articleTagRepository,
                 articleReactionCountRepository,
+                userProfileReadService,
                 articleMapper
         );
         UUID firstArticleId = UUID.randomUUID();
         UUID secondArticleId = UUID.randomUUID();
-        ArticleCardProjection firstProjection = projection(firstArticleId);
-        ArticleCardProjection secondProjection = projection(secondArticleId);
+        UUID firstAuthorId = UUID.randomUUID();
+        UUID secondAuthorId = UUID.randomUUID();
+        ArticleCardProjection firstProjection = projection(firstArticleId, firstAuthorId);
+        ArticleCardProjection secondProjection = projection(secondArticleId, secondAuthorId);
         ArticleCardResponse firstResponse = response(firstArticleId, List.of("spring", "redis"));
         ArticleCardResponse secondResponse = response(secondArticleId, List.of("feed"));
         when(articleRepository.findCardsByIdInAndStatus(
@@ -62,13 +69,20 @@ class ArticleCardReadServiceTests {
                         reactionCount(firstArticleId, "INSIGHTFUL", 0),
                         reactionCount(secondArticleId, "INSIGHTFUL", 3)
                 ));
+        when(userProfileReadService.findSummariesByIds(List.of(firstAuthorId, secondAuthorId)))
+                .thenReturn(List.of(
+                        new UserProfileSummary(firstAuthorId, "alice", "Alice Example", "https://example.com/alice.png"),
+                        new UserProfileSummary(secondAuthorId, "bob", "Bob Example", "https://example.com/bob.png")
+                ));
         when(articleMapper.toCardResponse(
                 firstProjection,
+                new UserProfileSummary(firstAuthorId, "alice", "Alice Example", "https://example.com/alice.png"),
                 List.of("spring", "redis"),
                 Map.of("LIKE", 2L, "CLAP", 1L)
         )).thenReturn(firstResponse);
         when(articleMapper.toCardResponse(
                 secondProjection,
+                new UserProfileSummary(secondAuthorId, "bob", "Bob Example", "https://example.com/bob.png"),
                 List.of("feed"),
                 Map.of("INSIGHTFUL", 3L)
         )).thenReturn(secondResponse);
@@ -90,24 +104,26 @@ class ArticleCardReadServiceTests {
         ArticleRepository articleRepository = mock(ArticleRepository.class);
         ArticleTagRepository articleTagRepository = mock(ArticleTagRepository.class);
         ArticleReactionCountRepository articleReactionCountRepository = mock(ArticleReactionCountRepository.class);
+        UserProfileReadService userProfileReadService = mock(UserProfileReadService.class);
         ArticleMapper articleMapper = mock(ArticleMapper.class);
         ArticleCardReadService articleCardReadService = new ArticleCardReadServiceImpl(
                 articleRepository,
                 articleTagRepository,
                 articleReactionCountRepository,
+                userProfileReadService,
                 articleMapper
         );
 
         List<ArticleCardResponse> cards = articleCardReadService.publishedCardsByIds(List.of());
 
         assertThat(cards).isEmpty();
-        verifyNoInteractions(articleRepository, articleTagRepository, articleReactionCountRepository, articleMapper);
+        verifyNoInteractions(articleRepository, articleTagRepository, articleReactionCountRepository, userProfileReadService, articleMapper);
     }
 
     private ArticleCardResponse response(UUID articleId, List<String> tags) {
         return new ArticleCardResponse(
                 articleId,
-                UUID.randomUUID(),
+                new ArticleAuthorResponse(UUID.randomUUID(), "alice", "Alice Example", "https://example.com/alice.png"),
                 "Title",
                 "title-a1b2c3d4",
                 "Summary",
@@ -129,7 +145,7 @@ class ArticleCardReadServiceTests {
         return reactionCount;
     }
 
-    private ArticleCardProjection projection(UUID articleId) {
+    private ArticleCardProjection projection(UUID articleId, UUID authorId) {
         return new ArticleCardProjection() {
             @Override
             public UUID getId() {
@@ -138,7 +154,7 @@ class ArticleCardReadServiceTests {
 
             @Override
             public UUID getAuthorId() {
-                return UUID.randomUUID();
+                return authorId;
             }
 
             @Override

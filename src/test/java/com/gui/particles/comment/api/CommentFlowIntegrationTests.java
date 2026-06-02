@@ -126,6 +126,19 @@ class CommentFlowIntegrationTests extends AbstractIntegrationTest {
                         .with(authenticatedAs(commenter)))
                 .andExpect(status().isNoContent());
 
+        mockMvc.perform(post("/api/v1/articles/{slug}/comments", slug)
+                        .with(authenticatedAs(otherUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "body": "This reply should fail because the parent is deleted.",
+                                  "parentCommentId": "%s"
+                                }
+                                """.formatted(topLevelCommentId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("conflict"))
+                .andExpect(jsonPath("$.detail").value("Cannot reply to a deleted comment"));
+
         mockMvc.perform(get("/api/v1/articles/{slug}/comments", slug))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(topLevelCommentId.toString()))

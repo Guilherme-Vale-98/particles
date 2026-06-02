@@ -22,6 +22,7 @@ import com.gui.particles.common.pagination.CursorPage;
 import com.gui.particles.common.pagination.CursorRequest;
 import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.users.application.UserProfileReadService;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -309,7 +310,8 @@ public class ArticleService {
     }
 
     private ArticleResponse response(Article article) {
-        return articleMapper.toResponse(article, articleTagRepository.findByArticleId(article.id()));
+        UserProfileSummary author = authorsById(List.of(article.authorId())).get(article.authorId());
+        return articleMapper.toResponse(article, author, articleTagRepository.findByArticleId(article.id()));
     }
 
     private CursorPage<ArticleCardResponse> cardPage(
@@ -326,9 +328,13 @@ public class ArticleService {
         List<ArticleCardProjection> includedPage = page.subList(0, Math.min(page.size(), cursorRequest.limit()));
         Map<UUID, List<String>> tagsByArticleId = tagsByArticleId(includedPage);
         Map<UUID, Map<String, Long>> reactionCountsByArticleId = reactionCountsByArticleId(includedPage);
+        Map<UUID, UserProfileSummary> authorsById = authorsById(includedPage.stream()
+                .map(ArticleCardProjection::getAuthorId)
+                .toList());
         List<ArticleCardResponse> items = includedPage.stream()
                 .map(article -> articleMapper.toCardResponse(
                         article,
+                        authorsById.get(article.getAuthorId()),
                         tagsByArticleId.getOrDefault(article.getId(), List.of()),
                         reactionCountsByArticleId.getOrDefault(article.getId(), Map.of())
                 ))
@@ -373,6 +379,22 @@ public class ArticleService {
                 .collect(Collectors.groupingBy(
                         ArticleTag::articleId,
                         Collectors.mapping(ArticleTag::tag, Collectors.toList())
+                ));
+    }
+
+    private Map<UUID, UserProfileSummary> authorsById(List<UUID> authorIds) {
+        if (authorIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UserProfileSummary> summaries = userProfileReadService.findSummariesByIds(authorIds);
+        if (summaries == null || summaries.isEmpty()) {
+            return Map.of();
+        }
+        return summaries.stream()
+                .collect(Collectors.toMap(
+                        UserProfileSummary::id,
+                        author -> author,
+                        (existing, duplicate) -> existing
                 ));
     }
 

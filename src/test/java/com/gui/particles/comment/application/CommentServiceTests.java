@@ -128,6 +128,34 @@ class CommentServiceTests {
     }
 
     @Test
+    void rejectsReplyWhenParentIsDeleted() throws Exception {
+        UUID articleId = UUID.randomUUID();
+        UUID parentId = UUID.randomUUID();
+        Comment parent = topLevelComment(
+                articleId,
+                UUID.randomUUID(),
+                parentId,
+                Instant.parse("2026-05-30T12:00:00Z")
+        );
+        parent.delete();
+        when(currentUserProvider.currentUserId()).thenReturn(UUID.randomUUID());
+        when(articleReadPort.publishedArticleBySlug("article-slug"))
+                .thenReturn(new CommentArticleTarget(articleId, UUID.randomUUID(), "article-slug"));
+        when(commentRepository.findByIdAndArticleIdAndParentCommentIdIsNull(parentId, articleId))
+                .thenReturn(Optional.of(parent));
+
+        assertThatThrownBy(() -> commentService.createReply("article-slug", parentId, "Reply body."))
+                .isInstanceOfSatisfying(DomainException.class, exception -> {
+                    assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.CONFLICT);
+                    assertThat(exception.getMessage()).isEqualTo("Cannot reply to a deleted comment");
+                });
+
+        verify(commentRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     void authorCanEditOwnComment() {
         UUID authorId = UUID.randomUUID();
         UUID commentId = UUID.randomUUID();

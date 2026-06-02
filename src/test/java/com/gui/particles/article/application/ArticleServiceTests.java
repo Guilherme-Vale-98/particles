@@ -17,6 +17,7 @@ import com.gui.particles.common.error.DomainException;
 import com.gui.particles.common.error.ErrorCode;
 import com.gui.particles.common.security.CurrentUserProvider;
 import com.gui.particles.users.application.UserProfileReadService;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -115,11 +116,17 @@ class ArticleServiceTests {
                 ArticleTag.create(articleId, "spring"),
                 ArticleTag.create(articleId, "modulith")
         ));
+        when(userProfileReadService.findSummariesByIds(List.of(currentUserId))).thenReturn(List.of(
+                new UserProfileSummary(currentUserId, "alice", "Alice Example", "https://example.com/alice.png")
+        ));
 
         ArticleResponse response = articleService.createDraft(request);
 
         assertThat(response.id()).isEqualTo(articleId);
-        assertThat(response.authorId()).isEqualTo(currentUserId);
+        assertThat(response.author().id()).isEqualTo(currentUserId);
+        assertThat(response.author().username()).isEqualTo("alice");
+        assertThat(response.author().displayName()).isEqualTo("Alice Example");
+        assertThat(response.author().avatarUrl()).isEqualTo("https://example.com/alice.png");
         assertThat(response.title()).isEqualTo("Hello Spring");
         assertThat(response.slug()).isEqualTo("hello-spring-a1b2c3d4");
         assertThat(response.status()).isEqualTo(ArticleStatus.DRAFT);

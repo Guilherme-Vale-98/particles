@@ -5,6 +5,7 @@ import com.gui.particles.article.domain.ArticleCardProjection;
 import com.gui.particles.article.domain.ArticleStatus;
 import com.gui.particles.article.domain.ArticleTag;
 import com.gui.particles.article.domain.ArticleVersion;
+import com.gui.particles.users.application.UserProfileSummary;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
@@ -34,10 +35,14 @@ class ArticleMapperTests {
                 ArticleTag.create(UUID.randomUUID(), "spring"),
                 ArticleTag.create(UUID.randomUUID(), "modulith")
         );
+        UserProfileSummary author = author(authorId);
 
-        ArticleResponse response = mapper.toResponse(article, tags);
+        ArticleResponse response = mapper.toResponse(article, author, tags);
 
-        assertThat(response.authorId()).isEqualTo(authorId);
+        assertThat(response.author().id()).isEqualTo(authorId);
+        assertThat(response.author().username()).isEqualTo("alice");
+        assertThat(response.author().displayName()).isEqualTo("Alice Example");
+        assertThat(response.author().avatarUrl()).isEqualTo("https://example.com/alice.png");
         assertThat(response.title()).isEqualTo("Hello Particles");
         assertThat(response.slug()).isEqualTo("hello-particles-a1b2c3d4");
         assertThat(response.summary()).isEqualTo("Short summary");
@@ -52,8 +57,9 @@ class ArticleMapperTests {
 
     @Test
     void mapsArticleToCardResponseWithoutBody() {
+        UUID authorId = UUID.randomUUID();
         Article article = Article.draft(
-                UUID.randomUUID(),
+                authorId,
                 "Card Title",
                 "card-title-a1b2c3d4",
                 "Card summary",
@@ -61,8 +67,9 @@ class ArticleMapperTests {
                 2
         );
 
-        ArticleCardResponse response = mapper.toCardResponse(article, List.of());
+        ArticleCardResponse response = mapper.toCardResponse(article, author(authorId), List.of());
 
+        assertThat(response.author().username()).isEqualTo("alice");
         assertThat(response.title()).isEqualTo("Card Title");
         assertThat(response.slug()).isEqualTo("card-title-a1b2c3d4");
         assertThat(response.summary()).isEqualTo("Card summary");
@@ -79,12 +86,14 @@ class ArticleMapperTests {
 
         ArticleCardResponse response = mapper.toCardResponse(
                 articleCardProjection(articleId, authorId, publishedAt, updatedAt),
+                author(authorId),
                 List.of("spring", "redis"),
                 Map.of("LIKE", 2L, "CLAP", 1L)
         );
 
         assertThat(response.id()).isEqualTo(articleId);
-        assertThat(response.authorId()).isEqualTo(authorId);
+        assertThat(response.author().id()).isEqualTo(authorId);
+        assertThat(response.author().username()).isEqualTo("alice");
         assertThat(response.title()).isEqualTo("Projection title");
         assertThat(response.slug()).isEqualTo("projection-title-a1b2c3d4");
         assertThat(response.summary()).isEqualTo("Projection summary");
@@ -108,6 +117,15 @@ class ArticleMapperTests {
         assertThat(response.articleId()).isEqualTo(articleId);
         assertThat(response.body()).isEqualTo("Previous body");
         assertThat(response.editedAt()).isNotNull();
+    }
+
+    private UserProfileSummary author(UUID authorId) {
+        return new UserProfileSummary(
+                authorId,
+                "alice",
+                "Alice Example",
+                "https://example.com/alice.png"
+        );
     }
 
     private ArticleCardProjection articleCardProjection(

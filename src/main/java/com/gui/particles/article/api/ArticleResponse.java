@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public record ArticleResponse(
         UUID id,
-        UUID authorId,
+        ArticleAuthorResponse author,
         String title,
         String slug,
         String summary,

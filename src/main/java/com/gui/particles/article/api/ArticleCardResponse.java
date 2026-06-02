@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public record ArticleCardResponse(
         UUID id,
-        UUID authorId,
+        ArticleAuthorResponse author,
         String title,
         String slug,
         String summary,
