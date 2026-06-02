@@ -17,6 +17,10 @@ def commandSucceeds(String command) {
 pipeline {
     agent any
 
+    tools {
+        jdk 'jdk-21'
+    }
+
     options {
         disableConcurrentBuilds()
         skipDefaultCheckout(true)
