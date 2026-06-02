@@ -2,7 +2,7 @@ def runMaven(String arguments) {
     if (isUnix()) {
         sh "./mvnw ${arguments}"
     } else {
-        bat ".\\mvnw.cmd ${arguments}"
+        bat "set \"PATH=C:\\Windows\\System32\\WindowsPowerShell\\v1.0;%PATH%\" && .\\mvnw.cmd ${arguments}"
     }
 }
 
@@ -19,10 +19,6 @@ pipeline {
 
     tools {
         jdk 'jdk-21'
-    }
-
-    environment {
-        PATH+POWERSHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0'
     }
 
     options {
@@ -50,7 +46,7 @@ pipeline {
                         sh './mvnw -version'
                     } else {
                         bat 'java -version'
-                        bat '.\\mvnw.cmd -version'
+                        runMaven('-version')
                     }
                 }
             }
