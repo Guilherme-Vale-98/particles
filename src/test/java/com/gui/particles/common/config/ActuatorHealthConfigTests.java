@@ -24,7 +24,7 @@ class ActuatorHealthConfigTests {
     }
 
     @Test
-    void definesLivenessReadinessDatabaseAndRedisHealthGroups() throws IOException {
+    void definesLivenessReadinessDatabaseAndCacheHealthGroups() throws IOException {
         String config = Files.readString(APPLICATION_YAML);
 
         assertThat(config).contains("liveness:");
@@ -33,7 +33,7 @@ class ActuatorHealthConfigTests {
         assertThat(config).contains("include: db,redis");
         assertThat(config).contains("database:");
         assertThat(config).contains("include: db");
-        assertThat(config).contains("redis:");
+        assertThat(config).contains("cache:");
         assertThat(config).contains("include: redis");
     }
 }
